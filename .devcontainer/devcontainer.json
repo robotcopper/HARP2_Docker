@@ -1,0 +1,26 @@
+{
+  "name": "ros2-humble-gazebo",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".." 
+  },
+  "runArgs": [
+    "--privileged",
+    "--net=host",
+    "--env=DISPLAY=${env:DISPLAY}",
+    "--volume=/tmp/.X11-unix:/tmp/.X11-unix:rw",
+    "--volume=/dev:/dev"
+  ],
+  "workspaceFolder": "/home/ros/ros2_ws",
+  "remoteUser": "ros",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-iot.vscode-ros",
+        "ms-vscode.cpptools",
+        "ms-python.python"
+      ]
+    }
+  }
+}

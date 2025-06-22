@@ -1,0 +1,3 @@
+[submodule "ros2_ws/src/HARP2_ROS"]
+	path = ros2_ws/src/HARP2_ROS
+	url = https://github.com/robotcopper/HARP2_ROS.git
