@@ -123,79 +123,17 @@ ENV LD_LIBRARY_PATH=/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib
 ###########################################
 #  Full+Gazebo Classic image
 ###########################################
-FROM full AS gazebo
 
-ENV DEBIAN_FRONTEND=noninteractive
+RUN add-apt-repository ppa:openrobotics/gazebo11-gz-cli
+RUN apt update
+RUN apt-get install -y --no-install-recommends \ 
+      libgazebo11-dev\
+      gazebo11\
+      && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && \
-    apt-get install -y \
-        sudo \
-        lsb-release \
-        software-properties-common
-
-# Installer les dépendances de DART
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cmake \
-    build-essential \
-    libassimp-dev \
-    libccd-dev \
-    libfcl-dev \
-    libbullet-dev \
-    libboost-all-dev \
-    libeigen3-dev \
-    libtinyxml2-dev
-
-WORKDIR /opt
-RUN git clone --branch release-6.13 https://github.com/dartsim/dart.git
-
-WORKDIR /opt/dart
-RUN mkdir build && cd build && \
-    cmake .. \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DBUILD_SHARED_LIBS=ON \
-      -DDART_BUILD_GUI_OSG=OFF \
-      -DDART_BUILD_DARTPY=OFF && \
-    make -j$(nproc) && make install
-
-RUN rm -rf /opt/dart
+ENV CMAKE_PREFIX_PATH=/usr/share/gazebo-11/cmake:$CMAKE_PREFIX_PATH
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Install dependencies for Gazebo Classic from source
-    cmake \
-    build-essential \
-    libprotobuf-dev \
-    libprotoc-dev \
-    protobuf-compiler \
-    libqt5core5a \
-    libqt5gui5 \
-    libqt5widgets5 \
-    qtbase5-dev \
-    libqwt-qt5-dev \
-    libtinyxml2-dev \
-    libgts-dev \
-    libboost-all-dev \
-    libeigen3-dev \
-    libfreeimage-dev \
-    libogre-1.9-dev \
-    libtbb-dev \
-    libyaml-cpp-dev \
-    libsdformat9-dev \
-    libignition-math6-dev \
-    libignition-common-dev \
-    libignition-fuel-tools-dev \
-    libopenal-dev \
-    libsimbody-dev \
-    libtar-dev \
-    libsdformat9-9 \
-    doxygen \
-    libignition-msgs5-dev \
-    libignition-transport8-dev \
-    libignition-common3-dev \
-    libignition-fuel-tools4-dev \
-    git \
-    wget \
-    curl \
-    ruby \
     # Install ros packages
     ros-humble-navigation2 \
     ros-humble-nav2-bringup \
@@ -214,31 +152,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-camera-info-manager \
     && rm -rf /var/lib/apt/lists/*
     
-# Télécharger et installer sdformat 9.8.0
-RUN cd /tmp && \
-    wget http://osrf-distributions.s3.amazonaws.com/sdformat/releases/sdformat-9.8.0.tar.bz2 && \
-    tar -xjf sdformat-9.8.0.tar.bz2 && \
-    cd sdformat-9.8.0 && \
-    mkdir build && cd build && \
-    cmake .. && \
-    make -j$(nproc) && \
-    make install && \
-    ldconfig
-    
-# 2. Build and install Gazebo Classic 11
-RUN cd /opt && \
-    git clone https://github.com/osrf/gazebo.git -b gazebo11 && \
-    cd gazebo && \
-    mkdir build && cd build && \
-    cmake .. 
-
-RUN cd /opt/gazebo/build && \
-    make -j7
-    
-RUN cd /opt/gazebo/build && \
-    make install VERBOSE=1
-
-
 # 1. Install dependencies and ROS keys
 RUN apt update && apt install -y curl gnupg2 lsb-release && \
     curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key | apt-key add - && \
@@ -246,9 +159,7 @@ RUN apt update && apt install -y curl gnupg2 lsb-release && \
     apt update && \
     rosdep update
 
-# 2. Create workspace and clone packages
-USER ros
-
+# # 2. Create workspace and clone packages
 WORKDIR /home/ros/ros2_ws/src/gazebo
 RUN git clone -b ros2 https://github.com/ros-simulation/gazebo_ros_pkgs.git && \
     git clone -b humble https://github.com/ros-controls/gazebo_ros2_control.git
