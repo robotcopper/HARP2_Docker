@@ -174,4 +174,6 @@ RUN colcon build --symlink-install --executor sequential --parallel-workers $(np
 # Copy setup script
 COPY .devcontainer/setup.sh /home/ros/setup.sh
 
+RUN chown -R ros:ros /home/ros/ros2_ws
+
 ENV DEBIAN_FRONTEND=
