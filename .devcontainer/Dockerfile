@@ -159,8 +159,8 @@ RUN mkdir build && cd build && \
 
 RUN rm -rf /opt/dart
 
-# 1. Install dependencies for Gazebo Classic from source
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Install dependencies for Gazebo Classic from source
     cmake \
     build-essential \
     libprotobuf-dev \
@@ -196,6 +196,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     curl \
     ruby \
+    # Install ros packages
+    ros-humble-navigation2 \
+    ros-humble-nav2-bringup \
+    ros-humble-slam-toolbox \
+    ros-humble-ros2-control \
+    ros-humble-ros2-controllers \
+    ros-humble-robot-localization \
+    ros-humble-moveit \
+    ros-humble-topic-based-ros2-control \
+    ros-humble-tf2-geometry-msgs \
+    ros-humble-nav-msgs \
+    ros-humble-std-srvs \
+    ros-humble-joint-state-publisher \
+    ros-humble-joint-state-publisher-gui \
+    ros-humble-xacro \
+    ros-humble-camera-info-manager \
     && rm -rf /var/lib/apt/lists/*
     
 # Télécharger et installer sdformat 9.8.0
@@ -241,31 +257,10 @@ WORKDIR /home/ros/ros2_ws/src/uros
 RUN git clone -b humble https://github.com/micro-ROS/micro-ROS-Agent.git && \
     git clone -b humble https://github.com/micro-ROS/micro_ros_msgs.git
 
-# 3. Install ros packages
-USER root
-RUN apt update && apt install -y --no-install-recommends \
-  ros-humble-navigation2 \
-  ros-humble-nav2-bringup \
-  ros-humble-slam-toolbox \
-  ros-humble-ros2-control \
-  ros-humble-ros2-controllers \
-  ros-humble-robot-localization \
-  ros-humble-moveit \
-  ros-humble-topic-based-ros2-control \
-  ros-humble-tf2-geometry-msgs \
-  ros-humble-nav-msgs \
-  ros-humble-std-srvs \
-  ros-humble-joint-state-publisher \
-  ros-humble-joint-state-publisher-gui \
-  ros-humble-xacro \
-  ros-humble-camera-info-manager \
-  && rm -rf /var/lib/apt/lists/*
+WORKDIR /home/ros/ros2_ws/
+RUN colcon build --symlink-install --executor sequential --parallel-workers $(nproc | awk '{print ($1>1)?$1-1:1}')
 
-# Copier le script
+# Copy setup script
 COPY .devcontainer/setup.sh /home/ros/setup.sh
-RUN chmod +x /home/ros/setup.sh
-
-# L'exécuter une seule fois
-RUN bash /home/ros/setup.sh && rm /home/ros/setup.sh
 
 ENV DEBIAN_FRONTEND=

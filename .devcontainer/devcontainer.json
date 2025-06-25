@@ -11,9 +11,12 @@
     "--volume=/tmp/.X11-unix:/tmp/.X11-unix:rw",
     "--volume=/dev:/dev"
   ],
-  "workspaceFolder": "/home/ros/ros2_ws",
+  "workspaceFolder": "/home/ros/ros2_ws/",
+  "mounts": [
+    "source=${localWorkspaceFolder}/ros2_ws/src/HARP2_ROS,target=/home/ros/ros2_ws/src/HARP2_ROS,type=bind"
+  ],
+  "postCreateCommand": "chmod +x /home/ros/setup.sh && /home/ros/setup.sh",
   "remoteUser": "ros",
-  "postCreateCommand": "bash .devcontainer/setup.sh",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -24,3 +27,4 @@
     }
   }
 }
+
