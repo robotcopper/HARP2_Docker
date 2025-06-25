@@ -15,7 +15,7 @@
   "mounts": [
     "source=${localWorkspaceFolder}/ros2_ws/src/HARP2_ROS,target=/home/ros/ros2_ws/src/HARP2_ROS,type=bind"
   ],
-  "postCreateCommand": "chmod +x /home/ros/setup.sh && /home/ros/setup.sh",
+  "postCreateCommand": "sudo chmod +x /home/ros/setup.sh && /home/ros/setup.sh",
   "remoteUser": "ros",
   "customizations": {
     "vscode": {
