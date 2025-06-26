@@ -150,6 +150,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-joint-state-publisher-gui \
     ros-humble-xacro \
     ros-humble-camera-info-manager \
+    ros-humble-imu-tools \
     && rm -rf /var/lib/apt/lists/*
     
 # 1. Install dependencies and ROS keys
@@ -175,5 +176,6 @@ RUN colcon build --symlink-install --executor sequential --parallel-workers $(np
 COPY .devcontainer/setup.sh /home/ros/setup.sh
 
 RUN chown -R ros:ros /home/ros/ros2_ws
+RUN usermod -aG dialout ros
 
 ENV DEBIAN_FRONTEND=
