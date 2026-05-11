@@ -57,6 +57,7 @@ ENV ROS_PYTHON_VERSION=3
 ENV ROS_VERSION=2
 ENV ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
 ENV DEBIAN_FRONTEND=
+
 ###########################################
 #  Develop image
 ###########################################
@@ -83,7 +84,7 @@ ARG USERNAME=ros
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
-# Check if "ubuntu" user exists, delete it if it does, then create the desired user
+# Supprime l'user "ubuntu" s'il existe, puis crée l'user "ros"
 RUN if getent passwd ubuntu > /dev/null 2>&1; then \
         userdel -r ubuntu && \
         echo "Deleted existing ubuntu user"; \
@@ -92,13 +93,13 @@ RUN if getent passwd ubuntu > /dev/null 2>&1; then \
     useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME && \
     echo "Created new user $USERNAME"
 
-# Add sudo support for the non-root user
+# Sudo sans mot de passe
 RUN apt-get update && apt-get install -y sudo \
-  && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME\
+  && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
   && chmod 0440 /etc/sudoers.d/$USERNAME \
   && rm -rf /var/lib/apt/lists/*
 
-# Set up autocompletion for user
+# Autocomplétion et sourcing ROS dans .bashrc
 RUN apt-get update && apt-get install -y --no-install-recommends git-core bash-completion \
   && echo "if [ -f /opt/ros/${ROS_DISTRO}/setup.bash ]; then source /opt/ros/${ROS_DISTRO}/setup.bash; fi" >> /home/$USERNAME/.bashrc \
   && echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/$USERNAME/.bashrc \
@@ -113,28 +114,29 @@ ENV AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1
 FROM dev AS full
 
 ENV DEBIAN_FRONTEND=noninteractive
-# Install the full release
+
+# ROS desktop complet
 RUN apt-get update && apt-get install -y --no-install-recommends \
   ros-humble-desktop \
   && rm -rf /var/lib/apt/lists/*
-ENV DEBIAN_FRONTEND=
+
 ENV LD_LIBRARY_PATH=/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib
 
 ###########################################
-#  Full+Gazebo Classic image
+#  Full + Gazebo Classic 11
 ###########################################
 
-RUN add-apt-repository ppa:openrobotics/gazebo11-gz-cli
-RUN apt update
-RUN apt-get install -y --no-install-recommends \ 
-      libgazebo11-dev\
-      gazebo11\
-      && rm -rf /var/lib/apt/lists/*
+RUN add-apt-repository ppa:openrobotics/gazebo11-gz-cli && \
+    apt-get update && apt-get install -y --no-install-recommends \
+      gazebo11 \
+      libgazebo11-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV CMAKE_PREFIX_PATH=/usr/share/gazebo-11/cmake:$CMAKE_PREFIX_PATH
+# CMAKE_PREFIX_PATH sans variable indéfinie
+ENV CMAKE_PREFIX_PATH=/usr/share/gazebo-11/cmake
 
+# Packages ROS supplémentaires
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Install ros packages
     ros-humble-navigation2 \
     ros-humble-nav2-bringup \
     ros-humble-slam-toolbox \
@@ -152,30 +154,45 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-camera-info-manager \
     ros-humble-imu-tools \
     && rm -rf /var/lib/apt/lists/*
-    
-# 1. Install dependencies and ROS keys
-RUN apt update && apt install -y curl gnupg2 lsb-release && \
-    curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key | apt-key add - && \
-    echo "deb http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list && \
-    apt update && \
-    rosdep update
 
-# # 2. Create workspace and clone packages
+# Mise à jour rosdep
+RUN rosdep update
+
+# Clonage des packages Gazebo
 WORKDIR /home/ros/ros2_ws/src/gazebo
 RUN git clone -b ros2 https://github.com/ros-simulation/gazebo_ros_pkgs.git && \
     git clone -b humble https://github.com/ros-controls/gazebo_ros2_control.git
 
+# Clonage micro-ROS
 WORKDIR /home/ros/ros2_ws/src/uros
 RUN git clone -b humble https://github.com/micro-ROS/micro-ROS-Agent.git && \
     git clone -b humble https://github.com/micro-ROS/micro_ros_msgs.git
 
-WORKDIR /home/ros/ros2_ws/
-RUN colcon build --symlink-install --executor sequential --parallel-workers $(nproc | awk '{print ($1>1)?$1-1:1}')
+# Compilation — 1 package à la fois, 4 threads max par package
+WORKDIR /home/ros/ros2_ws
+RUN . /opt/ros/humble/setup.sh && \
+    MAKEFLAGS="-j4" colcon build \
+        --symlink-install \
+        --executor sequential \
+        --parallel-workers 1 \
+        --cmake-args -DCMAKE_BUILD_TYPE=Release
 
-# Copy setup script
+# Permissions
+RUN chown -R ros:ros /home/ros/ros2_ws && \
+    usermod -aG dialout ros
+
+# Sourcing du workspace et Gazebo dans .bashrc
+RUN echo "if [ -f /home/ros/ros2_ws/install/setup.bash ]; then source /home/ros/ros2_ws/install/setup.bash; fi" >> /home/ros/.bashrc && \
+    echo "if [ -f /usr/share/gazebo/setup.sh ]; then source /usr/share/gazebo/setup.sh; fi" >> /home/ros/.bashrc && \
+    echo 'export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH' >> /home/ros/.bashrc
+
+# Copie et permissions du script de setup
 COPY .devcontainer/setup.sh /home/ros/setup.sh
-
-RUN chown -R ros:ros /home/ros/ros2_ws
-RUN usermod -aG dialout ros
+RUN chmod +x /home/ros/setup.sh && \
+    chown ros:ros /home/ros/setup.sh
 
 ENV DEBIAN_FRONTEND=
+
+# Démarrer en tant qu'utilisateur ros
+USER ros
+CMD ["bash"]
